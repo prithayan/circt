@@ -465,3 +465,20 @@ firrtl.circuit "ExternalModule" {
     %inst_source = firrtl.instance @ExternalModule {name = "", portNames = ["source"]} : !firrtl.bundle<valid: flip<uint<1>>, ready: uint<1>, data: flip<uint<64>>>
   }
 }
+
+// ConnectOp lowering of bundles and vectors are different. Make sure connect is not flipped after vector lowering.
+// https://github.com/llvm/circt/issues/791
+firrtl.circuit "lowerConnectVector" {
+  firrtl.module @lowerConnectVector(%clock: !firrtl.clock, %a_d: !firrtl.vector<uint<1>, 2>, %a_q: !firrtl.flip<vector<uint<1>, 2>>) {
+    %r = firrtl.reg %clock {name = "r"} : (!firrtl.clock) -> !firrtl.vector<uint<1>, 2>
+      firrtl.connect %r, %a_d : !firrtl.vector<uint<1>, 2>, !firrtl.vector<uint<1>, 2>
+      firrtl.connect %a_q, %r : !firrtl.flip<vector<uint<1>, 2>>, !firrtl.vector<uint<1>, 2>
+  }
+  // CHECK: firrtl.module @lowerConnectVector(%clock: !firrtl.clock, %a_d_0: !firrtl.uint<1>, %a_d_1: !firrtl.uint<1>, %a_q_0: !firrtl.flip<uint<1>>, %a_q_1: !firrtl.flip<uint<1>>) {
+  // CHECK:   %r_0 = firrtl.reg %clock {name = "r_0"} : (!firrtl.clock) -> !firrtl.uint<1>
+  // CHECK:   %r_1 = firrtl.reg %clock {name = "r_1"} : (!firrtl.clock) -> !firrtl.uint<1>
+  // CHECK:   firrtl.connect %r_0, %a_d_0 : !firrtl.uint<1>, !firrtl.uint<1>
+  // CHECK:   firrtl.connect %r_1, %a_d_1 : !firrtl.uint<1>, !firrtl.uint<1>
+  // CHECK:   firrtl.connect %a_q_0, %r_0 : !firrtl.flip<uint<1>>, !firrtl.uint<1>
+  // CHECK:   firrtl.connect %a_q_1, %r_1 : !firrtl.flip<uint<1>>, !firrtl.uint<1>
+}

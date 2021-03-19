@@ -698,10 +698,19 @@ void TypeLoweringVisitor::visitStmt(ConnectOp op) {
   assert(destValues.size() == srcValues.size() &&
          "connected bundles don't match");
 
+  // Connection algorithm, according to FIRRTL spec:
+  // Connect statements between two vector typed components recursively,
+  // connects each sub-element in the right-hand side expression to the
+  // corresponding sub-element in the left-hand side expression.
+  //
+  // Connect statements between two bundle typed components connects the i'th
+  // field of the right-hand side expression and the i'th field of the left-hand
+  // side expression. If the i'th field is flipped, then the left-hand side
+  // field is connected to the right-hand side field.
   for (auto tuple : llvm::zip_first(destValues, srcValues)) {
     Value newDest = std::get<0>(tuple);
     Value newSrc = std::get<1>(tuple);
-    if (newDest.getType().isa<FlipType>())
+    if (newDest.getType().isa<FlipType>() || destType.isa<FVectorType>())
       builder->create<ConnectOp>(newDest, newSrc);
     else
       builder->create<ConnectOp>(newSrc, newDest);
