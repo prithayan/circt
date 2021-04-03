@@ -144,7 +144,13 @@ static void buildModule(OpBuilder &builder, OperationState &result,
   // Record the names of the arguments if present.
   SmallString<8> attrNameBuf;
   SmallString<8> attrDirBuf;
+  SmallVector<Attribute, 4> argPortNameAttr; 
+  SmallVector<Attribute, 4> resultPortNameAttr; 
   for (const ModulePortInfo &port : ports) {
+    if (port.isOutput())
+      resultPortNameAttr.push_back(port.name);
+        else
+      argPortNameAttr.push_back(port.name );
     SmallVector<NamedAttribute, 2> argAttrs;
     if (!port.name.getValue().empty())
       argAttrs.push_back(
@@ -155,6 +161,8 @@ static void buildModule(OpBuilder &builder, OperationState &result,
                              : getArgAttrName(port.argNum, attrNameBuf);
     result.addAttribute(attrName, builder.getDictionaryAttr(argAttrs));
   }
+  result.addAttribute("ArgPortNames", builder.getArrayAttr(argPortNameAttr));
+  result.addAttribute("ResultPortNames", builder.getArrayAttr(resultPortNameAttr));
   result.addAttributes(attributes);
   result.addRegion();
 }
@@ -220,13 +228,20 @@ StringAttr rtl::getRTLNameAttr(ArrayRef<NamedAttribute> attrs) {
   }
   return StringAttr();
 }
+// get portname
+StringAttr rtl::getRTLNameAttr(Operation *op, unsigned argNum, bool isResult) {
+  auto portArg = isResult ? op->getAttr("ArgPortNames") : op->getAttr("ResultPortNames");
+  if (portArg)
+    return  portArg.cast<ArrayAttr>()[argNum].cast<StringAttr>();
+  return StringAttr();
+}
 
 SmallVector<ModulePortInfo> rtl::getModulePortInfo(Operation *op) {
   SmallVector<ModulePortInfo> results;
   auto argTypes = getModuleType(op).getInputs();
 
   for (unsigned i = 0, e = argTypes.size(); i < e; ++i) {
-    auto argAttrs = ::mlir::impl::getArgAttrs(op, i);
+    //auto argAttrs = op->getAttr("portnames");
     bool isInOut = false;
     auto type = argTypes[i];
 
@@ -235,16 +250,16 @@ SmallVector<ModulePortInfo> rtl::getModulePortInfo(Operation *op) {
       type = inout.getElementType();
     }
 
-    results.push_back({getRTLNameAttr(argAttrs),
+    results.push_back({getRTLNameAttr(op, i),
                        isInOut ? PortDirection::INOUT : PortDirection::INPUT,
                        type, i});
   }
 
   auto resultTypes = getModuleType(op).getResults();
   for (unsigned i = 0, e = resultTypes.size(); i < e; ++i) {
-    auto argAttrs = ::mlir::impl::getResultAttrs(op, i);
+    //auto argAttrs = ::mlir::impl::getResultAttrs(op, i);
     results.push_back(
-        {getRTLNameAttr(argAttrs), PortDirection::OUTPUT, resultTypes[i], i});
+        {getRTLNameAttr(op, i, true), PortDirection::OUTPUT, resultTypes[i], i});
   }
   return results;
 }
@@ -449,7 +464,7 @@ static void printModuleSignature(OpAsmPrinter &p, Operation *op,
     ArrayRef<StringRef> elidedAttrs;
     StringRef tmp;
     if (argumentValue) {
-      if (auto nameAttr = getRTLNameAttr(argAttrs)) {
+      if (auto nameAttr = getRTLNameAttr(op,i)) {
 
         // Check to make sure the asmprinter is printing it correctly.
         SmallString<32> resultNameStr;
@@ -482,7 +497,7 @@ static void printModuleSignature(OpAsmPrinter &p, Operation *op,
       if (i != 0)
         os << ", ";
       auto resultAttrs = ::mlir::impl::getResultAttrs(op, i);
-      StringAttr name = getRTLNameAttr(resultAttrs);
+      StringAttr name = getRTLNameAttr(op,i, true);
       if (name)
         os << '%' << name.getValue() << ": ";
 

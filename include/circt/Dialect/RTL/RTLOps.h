@@ -49,6 +49,7 @@ FunctionType getModuleType(Operation *op);
 
 SmallVector<ModulePortInfo> getModulePortInfo(Operation *op);
 StringAttr getRTLNameAttr(ArrayRef<NamedAttribute> attrs);
+StringAttr  getRTLNameAttr(Operation *op, unsigned argNum, bool isResult=false);
 
 /// Return true if the specified operation is a combinatorial logic op.
 bool isCombinatorial(Operation *op);
