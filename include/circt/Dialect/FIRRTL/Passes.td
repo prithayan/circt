@@ -210,4 +210,9 @@ def GrandCentralTaps : Pass<"firrtl-grand-central-taps", "firrtl::CircuitOp"> {
   let dependentDialects = ["sv::SVDialect"];
 }
 
+def WiringTransform : Pass<"firrtl-wiring-transform", "firrtl::CircuitOp"> {
+  let summary = "Wires a Module's Source Target to one or more Sink Modules/Components.";
+  let constructor =  "circt::firrtl::createWiringTransformPass()";
+}
+
 #endif // CIRCT_DIALECT_FIRRTL_PASSES_TD

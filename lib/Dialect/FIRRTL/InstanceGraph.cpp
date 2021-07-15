@@ -43,6 +43,7 @@ InstanceGraph::InstanceGraph(Operation *operation) {
         auto *instanceRecord =
             currentNode->recordInstance(instanceOp, targetNode);
         targetNode->recordUse(instanceRecord);
+        targetNode->depth = std::max(targetNode->depth ,currentNode->depth + 1 );
       });
     }
   }

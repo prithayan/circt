@@ -72,7 +72,7 @@ class InstanceGraphNode {
   };
 
 public:
-  InstanceGraphNode() : module(nullptr) {}
+  InstanceGraphNode() : module(nullptr), depth(0) {}
 
   /// Get the module that this node is tracking.
   Operation *getModule() const { return module; }
@@ -112,6 +112,9 @@ private:
 
   /// List of instances which instantiate this module.
   UseVec moduleUses;
+
+  ///  The depth of a node in a DAG is the length of the longest path from a source to the node.
+  size_t depth;
 
   // Provide access to the constructor.
   friend class InstanceGraph;
@@ -166,6 +169,8 @@ public:
   using iterator = NodeIterator;
   iterator begin() { return nodes.begin(); }
   iterator end() { return nodes.end(); }
+
+  InstanceGraphNode *getLCA(InstanceGraphNode *node1, InstanceGraphNode *node2);
 
 private:
   /// Get the node corresponding to the module.  If the node has does not exist
